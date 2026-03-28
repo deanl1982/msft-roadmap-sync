@@ -1,0 +1,16 @@
+# Credentials — never commit
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.python_packages/
+*.egg-info/
+
+# Azure Functions local settings (contains storage connection strings)
+functions/local.settings.json
+
+# macOS
+.DS_Store

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# deploy.sh — Provision Azure resources for msft-roadmap-sync
+# deploy-azure-resources.sh — Provision Azure resources for msft-roadmap-sync
 #
-# Run from Azure Cloud Shell at the root of this repository:
-#   chmod +x deploy.sh && ./deploy.sh
+# Run from the VS Code terminal at the root of this repository:
+#   chmod +x deploy-azure-resources.sh && ./deploy-azure-resources.sh
 #
 # Provisions:
 #   - Resource Group
@@ -49,14 +49,14 @@ fail() { echo -e "${RED}    ✗ $1${NC}"; exit 1; }
 log "Preflight checks"
 
 # Must be run from repo root
-[[ -f "functions/fetch_roadmap/function_app.py" ]] || \
+[[ -f "functions/function_app.py" ]] || \
   fail "Run this script from the root of the msft-roadmap-sync repository"
 ok "Repository root confirmed"
 
 # Azure CLI login
 if ! az account show &>/dev/null; then
-  warn "Not logged in — launching device code login"
-  az login --use-device-code
+  warn "Not logged in — opening browser login"
+  az login
 fi
 ok "Logged in as: $(az account show --query 'user.name' -o tsv)"
 
@@ -67,20 +67,23 @@ fi
 SUBSCRIPTION_ID=$(az account show --query id -o tsv)
 ok "Subscription: $(az account show --query name -o tsv) (${SUBSCRIPTION_ID})"
 
-# Azure Functions Core Tools
-command -v func &>/dev/null || fail "'func' CLI not found. Install Azure Functions Core Tools v4."
-ok "Azure Functions Core Tools: $(func --version)"
+# zip (required for function packaging)
+command -v zip &>/dev/null || fail "'zip' not found. Install with: brew install zip"
 
 # ============================================================
 # 1. Resource Group
 # ============================================================
 
 log "Creating resource group"
-az group create \
-  --name "$RESOURCE_GROUP" \
-  --location "$LOCATION" \
-  --output none
-ok "$RESOURCE_GROUP in $LOCATION"
+if az group show --name "$RESOURCE_GROUP" &>/dev/null; then
+  ok "$RESOURCE_GROUP already exists — skipping"
+else
+  az group create \
+    --name "$RESOURCE_GROUP" \
+    --location "$LOCATION" \
+    --output none
+  ok "$RESOURCE_GROUP in $LOCATION"
+fi
 
 # ============================================================
 # 2. Storage Account
@@ -125,6 +128,7 @@ fi
 # ============================================================
 
 log "Creating Function App"
+FUNCTION_APP_CREATED=false
 if az functionapp show --name "$FUNCTION_APP" --resource-group "$RESOURCE_GROUP" &>/dev/null; then
   ok "$FUNCTION_APP already exists — skipping creation"
 else
@@ -132,14 +136,46 @@ else
     --name "$FUNCTION_APP" \
     --resource-group "$RESOURCE_GROUP" \
     --storage-account "$STORAGE_ACCOUNT" \
-    --consumption-plan-location "$LOCATION" \
+    --flexconsumption-location "$LOCATION" \
     --runtime python \
     --runtime-version 3.11 \
-    --functions-version 4 \
-    --os-type Linux \
+    --instance-memory 2048 \
     --app-insights "$APP_INSIGHTS" \
     --output none
+  FUNCTION_APP_CREATED=true
   ok "$FUNCTION_APP"
+fi
+
+# ============================================================
+# 4.5 Configure ADO credentials
+# ============================================================
+
+log "Configuring ADO PAT"
+
+# Try to read from .env first
+ADO_PAT=$(grep -E "^ADO_PAT=" .env 2>/dev/null | cut -d'=' -f2-) || true
+
+if [[ -z "$ADO_PAT" ]]; then
+  echo ""
+  warn "ADO_PAT not found in .env"
+  warn "Create a PAT at: https://dev.azure.com/hobbitfeetado/_usersSettings/tokens"
+  warn "Required scope: Work Items (Read & Write)"
+  echo -n "  Enter your Azure DevOps PAT (input hidden): "
+  read -r -s ADO_PAT
+  echo ""
+fi
+
+if [[ -z "$ADO_PAT" ]]; then
+  warn "ADO_PAT not provided — ado_operations function will not authenticate to ADO"
+  warn "Set it later with:"
+  warn "  az functionapp config appsettings set --name $FUNCTION_APP --resource-group $RESOURCE_GROUP --settings ADO_PAT=<your-pat>"
+else
+  az functionapp config appsettings set \
+    --name "$FUNCTION_APP" \
+    --resource-group "$RESOURCE_GROUP" \
+    --settings "ADO_PAT=$ADO_PAT" \
+    --output none
+  ok "ADO_PAT configured as Function App setting"
 fi
 
 # ============================================================
@@ -147,7 +183,24 @@ fi
 # ============================================================
 
 log "Publishing function code"
-(cd functions && func azure functionapp publish "$FUNCTION_APP" --python)
+
+FUNC_ZIP="/tmp/func-roadmap-sync.zip"
+# Only wait for provisioning if the app was just created
+if [[ "$FUNCTION_APP_CREATED" == true ]]; then
+  warn "Waiting 30s for Function App to finish provisioning..."
+  sleep 30
+fi
+
+(cd functions && zip -r "$FUNC_ZIP" . -x "*.pyc" -x "__pycache__/*" -x ".venv/*" -x ".python_packages/*")
+
+az functionapp deployment source config-zip \
+  --name "$FUNCTION_APP" \
+  --resource-group "$RESOURCE_GROUP" \
+  --src "$FUNC_ZIP" \
+  --build-remote true \
+  --output none || true  # Flex Consumption returns partial-success exit code even on success
+
+rm -f "$FUNC_ZIP"
 ok "Function code deployed to $FUNCTION_APP"
 
 # ============================================================
@@ -155,20 +208,16 @@ ok "Function code deployed to $FUNCTION_APP"
 # ============================================================
 
 log "Retrieving function key"
-FUNCTION_KEY=""
-for attempt in 1 2 3 4 5; do
-  FUNCTION_KEY=$(az functionapp function keys list \
-    --name "$FUNCTION_APP" \
-    --resource-group "$RESOURCE_GROUP" \
-    --function-name fetch_roadmap \
-    --query "default" -o tsv 2>/dev/null) && break
-  warn "Function not ready yet (attempt $attempt/5) — waiting 15s..."
-  sleep 15
-done
+# On Flex Consumption, function-level keys are only available after first cold-start.
+# Fall back to the app-level master key, which is always available and works for all functions.
+FUNCTION_KEY=$(az functionapp keys list \
+  --name "$FUNCTION_APP" \
+  --resource-group "$RESOURCE_GROUP" \
+  --query "masterKey" -o tsv 2>/dev/null) || true
 
 if [[ -z "$FUNCTION_KEY" ]]; then
-  warn "Could not retrieve function key automatically — run this after the script:"
-  warn "  az functionapp function keys list --name $FUNCTION_APP --resource-group $RESOURCE_GROUP --function-name fetch_roadmap --query default -o tsv"
+  warn "Could not retrieve key — run manually:"
+  warn "  az functionapp keys list --name $FUNCTION_APP --resource-group $RESOURCE_GROUP --query masterKey -o tsv"
   FUNCTION_URL="https://${FUNCTION_APP}.azurewebsites.net/api/fetch_roadmap?code=<retrieve-key-manually>"
 else
   FUNCTION_URL="https://${FUNCTION_APP}.azurewebsites.net/api/fetch_roadmap?code=${FUNCTION_KEY}"
@@ -212,7 +261,7 @@ else
     --model-name gpt-4o \
     --model-version "2024-11-20" \
     --model-format OpenAI \
-    --sku-capacity 10 \
+    --sku-capacity 50 \
     --sku-name GlobalStandard \
     --output none
   ok "gpt-4o (GlobalStandard, 10K TPM)"
@@ -224,17 +273,6 @@ fi
 
 log "Creating Logic App scaffold"
 
-# The workflow definition must be provided as a file path in some CLI versions
-LOGIC_DEF_FILE="$(mktemp /tmp/logic-def-XXXX.json)"
-cat > "$LOGIC_DEF_FILE" <<'EOF'
-{
-  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
-  "contentVersion": "1.0.0.0",
-  "triggers": {},
-  "actions": {}
-}
-EOF
-
 if az logic workflow show \
      --name "$LOGIC_APP" \
      --resource-group "$RESOURCE_GROUP" &>/dev/null; then
@@ -244,11 +282,19 @@ else
     --name "$LOGIC_APP" \
     --resource-group "$RESOURCE_GROUP" \
     --location "$LOCATION" \
-    --definition "$LOGIC_DEF_FILE" \
+    --definition '{
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "contentVersion": "1.0.0.0",
+        "triggers": {},
+        "actions": {}
+      }
+    }' \
     --output none
   ok "$LOGIC_APP (scaffold only — configure workflow in portal)"
 fi
-rm -f "$LOGIC_DEF_FILE"
 
 # ============================================================
 # Summary
@@ -289,7 +335,7 @@ echo "     • Model: gpt-4o"
 echo "     • Instructions: paste the full contents of agent-instructions.md"
 echo "     • Add tool → MCP Servers → Azure DevOps"
 echo "     • Add tool → Azure Function → $FUNCTION_APP → fetch_roadmap"
-echo "       (Function URL if needed manually: $FUNCTION_URL)"
+echo "       Function URL: $FUNCTION_URL"
 echo ""
 echo "  3. Design the Logic App workflow"
 echo "     $PORTAL_LOGIC"
