@@ -1,0 +1,93 @@
+{
+  "feeds": ["azure", "m365"],
+  "globalFilters": {
+    "statuses": ["In preview", "In development"],
+    "excludeTypes": ["Retirements"],
+    "daysBack": 7
+  },
+  "boardMappings": [
+    {
+      "name": "M365 Collaboration",
+      "products": [
+        "Microsoft Teams",
+        "SharePoint",
+        "OneDrive",
+        "Outlook",
+        "Exchange",
+        "Planner",
+        "Microsoft To Do",
+        "Microsoft Viva",
+        "Microsoft 365 app",
+        "OneNote",
+        "PowerPoint"
+      ],
+      "ado": {
+        "organization": "https://dev.azure.com/YOUR_ORG",
+        "project": "YOUR_M365_PROJECT",
+        "workItemType": "Feature",
+        "areaPath": ""
+      }
+    },
+    {
+      "name": "Security & Compliance",
+      "products": [
+        "Microsoft Purview",
+        "Microsoft Defender for Office 365",
+        "Microsoft Information Protection"
+      ],
+      "ado": {
+        "organization": "https://dev.azure.com/YOUR_ORG",
+        "project": "YOUR_SECURITY_PROJECT",
+        "workItemType": "Feature",
+        "areaPath": ""
+      }
+    },
+    {
+      "name": "Identity & Access",
+      "products": [
+        "Microsoft Entra"
+      ],
+      "ado": {
+        "organization": "https://dev.azure.com/YOUR_ORG",
+        "project": "YOUR_IDENTITY_PROJECT",
+        "workItemType": "Feature",
+        "areaPath": ""
+      }
+    },
+    {
+      "name": "Endpoint Management",
+      "products": [
+        "Microsoft Intune",
+        "Windows 365"
+      ],
+      "ado": {
+        "organization": "https://dev.azure.com/YOUR_ORG",
+        "project": "YOUR_ENDPOINT_PROJECT",
+        "workItemType": "Feature",
+        "areaPath": ""
+      }
+    },
+    {
+      "name": "M365 Platform",
+      "products": [
+        "Microsoft 365",
+        "Microsoft 365 admin center",
+        "Microsoft Copilot (Microsoft 365)"
+      ],
+      "ado": {
+        "organization": "https://dev.azure.com/YOUR_ORG",
+        "project": "YOUR_PLATFORM_PROJECT",
+        "workItemType": "Feature",
+        "areaPath": ""
+      }
+    }
+  ],
+  "defaultBoard": {
+    "ado": {
+      "organization": "https://dev.azure.com/YOUR_ORG",
+      "project": "YOUR_DEFAULT_PROJECT",
+      "workItemType": "Feature",
+      "areaPath": ""
+    }
+  }
+}
