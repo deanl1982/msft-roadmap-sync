@@ -225,42 +225,24 @@ The hub and project must be created manually in the portal (once only). The agen
    - **Model deployment:** Select `gpt-4o` (from your Azure OpenAI resource)
    - **Instructions:** Copy and paste the entire contents of `agent-instructions.md` from this repository
 
-### 3.4 Add the Azure DevOps MCP Server tool
+### 3.4 Register the function tools (programmatic)
 
-This gives the agent the ability to search for and create work items in Azure DevOps.
+Run `create-foundry-agent.py` — this registers both `fetch_roadmap` and `ado_operations` as OpenAPI tools on the agent, and creates or updates the agent in one step:
 
-1. In the agent's **Tools** section, click **Add tool**
-2. Click **MCP Servers** tab
-3. Select **Azure DevOps** from the tool catalog
-4. Click **Connect** and authenticate with your Azure DevOps organization
-5. The following tool operations will be available:
-   - **Search work items** -- used for duplicate detection (searching by `RoadmapId:<guid>` tag)
-   - **Create work item** -- used to create new Epics on the target board
-   - **Get work item** -- used to verify created items
-   - **List projects** -- used to validate project names from config
-6. Click **Save**
+```bash
+python3 create-foundry-agent.py
+```
 
-### 3.5 Add the Azure Function as a custom tool
+Save the **Agent ID** printed at the end — you'll need it for the Logic Apps step.
 
-This gives the agent the ability to call your RSS fetch + filter function.
-
-1. In the agent's **Tools** section, click **Add tool**
-2. Select **Azure Function**
-3. Select your Function App: `func-roadmap-sync`
-4. Select the function: `fetch_roadmap`
-5. The function's input/output schema will be auto-detected from the code
-6. Click **Save**
-
-> **Alternative (OpenAPI):** If auto-detection doesn't work, you can manually define the tool by providing an OpenAPI spec. The function accepts a POST with `{"config": {...}, "daysBack": 7}` and returns `{"totalFetched": N, "totalFiltered": N, "items": [...]}`.
+> The script reads `AZURE_FOUNDRY_ENDPOINT` and `AZURE_FUNCTION_URL` from `.env`. See `.env.example` for the required values.
 
 ### 3.6 Test in the Foundry Playground
 
-Before connecting the scheduler, test the agent interactively.
+Before connecting the scheduler, test the agent interactively using the prompts in `playground-test-prompts.md`. Run Tests 1–6 in order.
 
 1. Click **Playground** (or **Test** tab) in the agent view
-2. Send this message:
-
-   > Run the daily roadmap sync. Use this config: `<paste the contents of your roadmap-sync-config.json>`. Fetch items from the last 14 days, filter and route per config, create work items for new items, and report a summary.
+2. Use the prompt from **Test 1** first (fetch only, no ADO writes), then work through the remaining tests
 
 3. Verify the agent:
    - **Calls the `fetch_roadmap` function** -- you should see the tool call in the trace
@@ -443,6 +425,6 @@ Run through this checklist to confirm everything is working:
 | `agent-instructions.md` | Foundry Agent system prompt with work item template | When you want to change the Epic format, tags, or agent behaviour |
 | `deploy-azure-resources.sh` | Provisions all Azure infrastructure and deploys function code | When adding new Azure resources or redeploying after function changes |
 | `setup-ado-boards.sh` | Creates ADO teams and area paths from the config | When you add new board mappings or set up a new ADO project |
-| `functions/fetch_roadmap/function_app.py` | RSS fetch, parse, filter, and board routing logic | When Microsoft changes the RSS feed format or you need new filter logic |
+| `functions/function_app.py` | RSS fetch, filter, board routing (`fetch_roadmap`) and ADO search/create (`ado_operations`) | When Microsoft changes the RSS feed format or you need new filter logic |
 | `functions/host.json` | Azure Functions runtime configuration | Rarely |
 | `functions/requirements.txt` | Python dependencies for the function | When adding new Python packages |

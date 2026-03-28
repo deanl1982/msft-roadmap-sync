@@ -248,24 +248,17 @@ else
 fi
 
 log "Deploying GPT-4o model"
-if az cognitiveservices account deployment show \
-     --name "$OPENAI_ACCOUNT" \
-     --resource-group "$RESOURCE_GROUP" \
-     --deployment-name gpt-4o &>/dev/null; then
-  ok "gpt-4o deployment already exists — skipping"
-else
-  az cognitiveservices account deployment create \
-    --name "$OPENAI_ACCOUNT" \
-    --resource-group "$RESOURCE_GROUP" \
-    --deployment-name gpt-4o \
-    --model-name gpt-4o \
-    --model-version "2024-11-20" \
-    --model-format OpenAI \
-    --sku-capacity 50 \
-    --sku-name GlobalStandard \
-    --output none
-  ok "gpt-4o (GlobalStandard, 10K TPM)"
-fi
+az cognitiveservices account deployment create \
+  --name "$OPENAI_ACCOUNT" \
+  --resource-group "$RESOURCE_GROUP" \
+  --deployment-name gpt-4o \
+  --model-name gpt-4o \
+  --model-version "2024-11-20" \
+  --model-format OpenAI \
+  --sku-capacity 450 \
+  --sku-name GlobalStandard \
+  --output none
+ok "gpt-4o (GlobalStandard, 450K TPM)"
 
 # ============================================================
 # 8. Logic App scaffold

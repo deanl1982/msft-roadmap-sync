@@ -360,6 +360,12 @@ def ado_operations(req: func.HttpRequest) -> func.HttpResponse:
         area_path = body.get("areaPath", "")
         tags = body.get("tags", "")
 
+        # ADO System.AreaPath uses "Project\SubArea" format.
+        # The classification nodes API (used by setup scripts) returns paths with a
+        # hidden "\Area\" prefix node — strip it so ADO accepts the value.
+        if area_path:
+            area_path = area_path.lstrip("\\").replace("\\Area\\", "\\")
+
         if not title:
             return func.HttpResponse(
                 json.dumps({"error": "Missing required field: title"}),

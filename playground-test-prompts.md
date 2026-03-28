@@ -113,20 +113,20 @@ Report the created work item ID and URL.
 Validates the complete flow (fetch → dedup check → generate content → create) on a small scope.
 
 ```
-Run a roadmap sync for Microsoft Teams items only from the last 14 days. For each item:
+Run a roadmap sync for Microsoft Teams items only from the last 7 days. For each item:
 1. Check for duplicates using the RoadmapId tag
 2. Generate a full work item (Impact Summary, Recommended Actions, original description)
 3. Create the Epic in ADO
 4. Report a summary
 
-Limit to a maximum of 3 items to keep this test short. Use this config:
+Limit to a maximum of 1 item to keep this test short. Use this config:
 
 {
   "feeds": ["m365"],
   "globalFilters": {
     "statuses": ["In preview", "In development"],
     "excludeTypes": ["Retirements"],
-    "daysBack": 14
+    "daysBack": 7
   },
   "boardMappings": [
     {
@@ -212,3 +212,66 @@ Run the daily roadmap sync. Fetch items from the last 7 days, check for duplicat
   }
 }
 ```
+
+---
+
+## Test 7: Scale test — 30 days, all boards, Features
+
+Validates the system at higher volume and with the Feature work item type. Run after Test 6 passes.
+
+```
+Run a roadmap sync for the last 30 days across all boards. For each new item (no duplicates):
+1. Check for duplicates using the RoadmapId tag
+2. Generate a full work item (Impact Summary, Recommended Actions, original description)
+3. Create a Feature (not Epic) in ADO
+4. Report a full summary including how many items were fetched, how many were new vs duplicate, and how many Features were created per board
+
+Use this config:
+
+{
+  "feeds": ["azure", "m365"],
+  "globalFilters": {
+    "statuses": ["In preview", "In development"],
+    "excludeTypes": ["Retirements"],
+    "daysBack": 30
+  },
+  "boardMappings": [
+    {
+      "name": "M365 Collaboration",
+      "products": ["Microsoft Teams", "SharePoint", "OneDrive", "Outlook", "Exchange", "Planner", "Microsoft To Do", "Microsoft Viva", "Microsoft 365 app", "OneNote", "PowerPoint"],
+      "ado": { "organization": "https://dev.azure.com/hobbitfeetado/", "project": "Hobbit-Dev", "workItemType": "Feature", "areaPath": "\\Hobbit-Dev\\Area\\Roadmap\\M365 Collaboration" }
+    },
+    {
+      "name": "Security and Compliance",
+      "products": ["Microsoft Purview", "Microsoft Defender for Office 365", "Microsoft Information Protection"],
+      "ado": { "organization": "https://dev.azure.com/hobbitfeetado/", "project": "Hobbit-Dev", "workItemType": "Feature", "areaPath": "\\Hobbit-Dev\\Area\\Roadmap\\Security and Compliance" }
+    },
+    {
+      "name": "Identity and Access",
+      "products": ["Microsoft Entra"],
+      "ado": { "organization": "https://dev.azure.com/hobbitfeetado/", "project": "Hobbit-Dev", "workItemType": "Feature", "areaPath": "\\Hobbit-Dev\\Area\\Roadmap\\Identity and Access" }
+    },
+    {
+      "name": "Endpoint Management",
+      "products": ["Microsoft Intune", "Windows 365"],
+      "ado": { "organization": "https://dev.azure.com/hobbitfeetado/", "project": "Hobbit-Dev", "workItemType": "Feature", "areaPath": "\\Hobbit-Dev\\Area\\Roadmap\\Endpoint Management" }
+    },
+    {
+      "name": "M365 Platform",
+      "products": ["Microsoft 365", "Microsoft 365 admin center", "Microsoft Copilot (Microsoft 365)"],
+      "ado": { "organization": "https://dev.azure.com/hobbitfeetado/", "project": "Hobbit-Dev", "workItemType": "Feature", "areaPath": "\\Hobbit-Dev\\Area\\Roadmap\\M365 Platform" }
+    }
+  ],
+  "defaultBoard": {
+    "ado": { "organization": "https://dev.azure.com/hobbitfeetado/", "project": "Hobbit-Dev", "workItemType": "Feature", "areaPath": "\\Hobbit-Dev\\Area\\Roadmap\\General" }
+  }
+}
+```
+
+**What to check:**
+- `fetch_roadmap` returns significantly more items than the 7-day sync
+- `ado_operations` with `search_work_items` called for every item before creating
+- Features created across multiple boards (not just one)
+- Items already created in Test 6 are detected as duplicates and skipped
+- Summary shows per-board breakdown of created vs skipped counts
+- No errors for any board
