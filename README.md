@@ -2,6 +2,8 @@
 
 Automatically syncs Microsoft Azure and M365 roadmap updates from official RSS feeds into Azure DevOps Epics. An AI agent generates structured work items — including impact summaries and recommended actions — and routes them to the correct ADO boards based on product.
 
+> **Note:** This repo uses real org/project names (`hobbitfeetado` / `Hobbit-Dev`) as working examples. These are identifiers only — no credentials are stored here. To adapt for your own org, update `roadmap-sync-config.json`, `configure-logic-app.sh`, and `setup-ado-boards.sh` with your ADO organisation URL and project name.
+
 ## How It Works
 
 ```text
