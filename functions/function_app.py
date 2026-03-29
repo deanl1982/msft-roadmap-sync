@@ -213,6 +213,7 @@ def fetch_roadmap(req: func.HttpRequest) -> func.HttpResponse:
 
     days_back = body.get("daysBack", config.get("globalFilters", {}).get("daysBack", 7))
     cutoff = datetime.now(timezone.utc) - timedelta(days=days_back)
+    max_items = body.get("maxItems")  # Optional cap on returned items (oldest dropped first)
 
     feeds = config.get("feeds", ["azure", "m365"])
     all_items = []
@@ -238,7 +239,11 @@ def fetch_roadmap(req: func.HttpRequest) -> func.HttpResponse:
             item["board"] = board
             results.append(item)
 
+    # Sort newest first so the most recent items are always processed when maxItems is set
     results.sort(key=lambda x: x.get("pubDate") or "", reverse=True)
+
+    if max_items and len(results) > max_items:
+        results = results[:max_items]
 
     return func.HttpResponse(
         json.dumps({

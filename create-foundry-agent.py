@@ -128,6 +128,10 @@ def main():
                                             "description": "Number of days to look back (default: 7)",
                                             "default": 7,
                                         },
+                                        "maxItems": {
+                                            "type": "integer",
+                                            "description": "Maximum number of items to return (newest first). Use to cap batch size per agent run.",
+                                        },
                                     },
                                 }
                             }

@@ -82,10 +82,10 @@ Generate an HTML description with this structure:
 
 Always apply these tags (semicolon-separated):
 
-- `Roadmap` — identifies this as a roadmap-sourced item
+- `MSFT-Roadmap` — identifies this as a Microsoft roadmap-sourced item
 - `RoadmapId:<guid>` — the unique roadmap item GUID, used for duplicate detection
 - `<FEED>` — the feed name in uppercase (e.g., `AZURE` or `M365`)
-- `<Status>` — the item's status (e.g., `In preview`, `In development`)
+- `MSFT-Roadmap-Status:<status>` — the item's status with spaces replaced by hyphens (e.g., `MSFT-Roadmap-Status:In-Development`, `MSFT-Roadmap-Status:In-Preview`)
 - `<Product names>` — one tag per product associated with the item
 
 Additionally, add `Needs-Review` if the item's status is "In preview" — these warrant closer attention from product owners.

@@ -18,7 +18,7 @@ Change it to `14`, `30`, etc. Then redeploy:
 ./configure-logic-app.sh
 ```
 
-> The daily production sync uses `7`. Increase temporarily if you suspect items were missed due to a gap in the schedule.
+> The daily production sync uses `7`. Increase temporarily if you suspect items were missed due to a gap in the schedule. Do not set this above `30` without also reducing `maxItems` — large windows return hundreds of items which will exceed the Azure OpenAI S0 token rate limit and cause the agent run to fail with `rate_limit_exceeded`.
 
 ---
 
