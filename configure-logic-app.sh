@@ -239,7 +239,7 @@ cat > "$WORKFLOW_FILE" << WORKFLOW_EOF
             "method": "POST",
             "uri": "${FOUNDRY_ENDPOINT}/threads?api-version=2025-05-01",
             "headers": { "Content-Type": "application/json" },
-            "authentication": { "type": "ManagedServiceIdentity", "audience": "https://ml.azure.com/" },
+            "authentication": { "type": "ManagedServiceIdentity", "audience": "https://ai.azure.com" },
             "body": {}
           }
         },
@@ -250,7 +250,7 @@ cat > "$WORKFLOW_FILE" << WORKFLOW_EOF
             "method": "POST",
             "uri": "@{concat('${FOUNDRY_ENDPOINT}/threads/', body('Create_Thread')['id'], '/messages?api-version=2025-05-01')}",
             "headers": { "Content-Type": "application/json" },
-            "authentication": { "type": "ManagedServiceIdentity", "audience": "https://ml.azure.com/" },
+            "authentication": { "type": "ManagedServiceIdentity", "audience": "https://ai.azure.com" },
             "body": {
               "role": "user",
               "content": "Run the daily roadmap sync. Fetch items from the last 7 days, check for duplicates, create Epics for new items, and report a summary."
@@ -264,7 +264,7 @@ cat > "$WORKFLOW_FILE" << WORKFLOW_EOF
             "method": "POST",
             "uri": "@{concat('${FOUNDRY_ENDPOINT}/threads/', body('Create_Thread')['id'], '/runs?api-version=2025-05-01')}",
             "headers": { "Content-Type": "application/json" },
-            "authentication": { "type": "ManagedServiceIdentity", "audience": "https://ml.azure.com/" },
+            "authentication": { "type": "ManagedServiceIdentity", "audience": "https://ai.azure.com" },
             "body": {
               "assistant_id": "${AGENT_ID}"
             }
@@ -289,7 +289,7 @@ cat > "$WORKFLOW_FILE" << WORKFLOW_EOF
               "inputs": {
                 "method": "GET",
                 "uri": "@{concat('${FOUNDRY_ENDPOINT}/threads/', body('Create_Thread')['id'], '/runs/', body('Create_Run')['id'], '?api-version=2025-05-01')}",
-                "authentication": { "type": "ManagedServiceIdentity", "audience": "https://ml.azure.com/" }
+                "authentication": { "type": "ManagedServiceIdentity", "audience": "https://ai.azure.com" }
               }
             }
           }
@@ -306,7 +306,7 @@ cat > "$WORKFLOW_FILE" << WORKFLOW_EOF
               "inputs": {
                 "method": "GET",
                 "uri": "@{concat('${FOUNDRY_ENDPOINT}/threads/', body('Create_Thread')['id'], '/messages?api-version=2025-05-01&limit=1&order=desc')}",
-                "authentication": { "type": "ManagedServiceIdentity", "audience": "https://ml.azure.com/" }
+                "authentication": { "type": "ManagedServiceIdentity", "audience": "https://ai.azure.com" }
               }
             }
           },
